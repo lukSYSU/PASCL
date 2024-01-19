@@ -1,0 +1,94 @@
+dataset:
+  # Select the data type, this decides which Dataset class to use
+  source: phasespace
+  phasespace:
+    known_path: /home/lujj/projects/code/set2tree/scripts/training/phasespace_dataset/
+    unknown_path: /home/lujj/projects/code/set2tree/scripts/training/phasespace_dataset/
+    config:
+      #seed: 42  # numpy random seed
+      #samples: 42  # Number of total samples to load in dataset
+      #samples_per_topology: 42  # Number of samples per topology to load
+      monitor_tag: "Validation Known" # Which dataset tag to monitor for e.g. checkpointing
+      apply_scaling: True # Whether to apply preprocessing scaling to input features
+      # scaling_dict: null
+      # You can provide scaling values yourself, otherwise these will be calculated from a subset of the training dataset
+      scaling_dict:
+        mean: [0, 0, 0, 11.7]
+        std: [8.49271, 8.492668, 8.489674, 9.792943]
+  # You can select a subset of the datasets to load, it will handle zero padding for you
+  # For the belle data source this is an integer to load only the first N
+  # files
+  #datasets:
+  num_classes: 8
+train_path: /home/lujj/projects/code/set2tree/scripts/training/phasespace_dataset/
+val_path: /home/lujj/projects/code/set2tree/scripts/training/phasespace_dataset/
+loss: focal
+num_workers: 16
+num_gpus: 1
+run_name: GNN_NRI
+name: Set2TreeGNN
+use_swa: True
+num_epochs: 50
+output:
+  # Top directory to save model, run_name as subdir and timestamp suffix
+  # will be added automatically
+  belle:
+    path: null
+    tensorboard: null
+  phasespace:
+    path: null
+    tensorboard: null
+  # Give a name to this config file's series of training
+  # Tensorboard logs will be saved in a subdir with that name to help
+  # organise them
+  run_name: my_run_name
+train:
+  epochs: 50
+  # Number of batches to count as one epoch, useful if you have lots of samples
+  #steps: 1000
+  batch_size: 128
+  num_workers: 15
+  learning_rate: 1.e-3
+  # Whether to calculate class weights from dataset
+  class_weights: True
+  early_stop_patience: 10
+  optimiser: adam # sgd
+  model: fnri_model # nri_model / gat_model / edge_model / fnri_model
+  mixed_precision: True
+  progress_bar: True
+  record_gpu_usage: True
+  include_efficiency: True
+  # optuna:
+  #   active: True
+  #   loss: [focal, cross_entropy]
+  #   ntrials: 150
+  #   timeout: 172800
+  #   # One study for many trials
+  #   study_path: ./results/optuna/
+val:
+  # Interations to execute
+  #steps: 500
+  batch_size: 512
+  num_workers: 10
+model:
+  loss: focal
+  nblocks: 2
+  dim_feedforward: 512
+  initial_mlp_layers: 1
+  block_additional_mlp_layers: 0
+  final_mlp_layers: 1
+  dropout: 0.3
+  embedding_dims: 3 # Only used if features are tokenized
+  batchnorm: True
+  symmetrize: True
+  self_interaction: False
+  infeatures: 4
+  num_classes: 8
+  # Optuna hyperparameters to vary
+  # NOTE: These are ALL categorical
+  #optuna:
+  #  nblocks: [1, 4]
+  #  dim_feedforward: [128, 256, 512, 1024]
+  #  initial_mlp_layers: [2]
+  #  block_additional_mlp_layers: [2, 4]
+  #  final_mlp_layers: [2]
