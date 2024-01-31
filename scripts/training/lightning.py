@@ -20,7 +20,10 @@ from set2tree.models.Set2TreeEdge import Set2TreeEdge
 from set2tree.models.fNRI import fNRIModel
 from set2tree.models.afNRI import afNRIModel
 from set2tree.models.SGCL import SGCL
-
+# from set2tree.models.GCN import GCN
+# from set2tree.models.GAT import GAT
+# from set2tree.models.EdgeConvModel import EdgeConvModel
+# from set2tree.models.DGCNN import PointNet, DGCNN
 
 from set2tree.utils import calculate_class_weights
 from pl_metrics import *
@@ -34,16 +37,25 @@ class Set2TreeLightning(LightningModule):
         self.config = config
         if config["train"]["model"] == "nri_model":
             self.model = NRIModel(**self.config["model"])
-        elif config["train"]["model"] == "gat_model":
-            self.model = Set2TreeGAT(**self.config["model"])
         elif config["train"]["model"] == "edge_model":
             self.model = Set2TreeEdge(**self.config["model"])
         elif config["train"]["model"] == "fnri_model":
             self.model = fNRIModel(**self.config["model"])
         elif config["train"]["model"] == "afnri_model":
             self.model = afNRIModel(**self.config["model"])
-        elif config["train"]["model"] == "pascl" or "gca":
+        elif config["train"]["model"] == "pascl" or config["train"]["model"] == "gca":
             self.model = SGCL(**self.config["model"])
+        elif config["train"]["model"] == "gcn_model":
+            self.model = GCN(**self.config["model"])
+        elif config["train"]["model"] == "gat_model":
+            self.model = GAT(**self.config["model"])
+        elif config["train"]["model"] == "edge_conv":
+            self.model = EdgeConvModel(**self.config["model"])
+        elif config["train"]["model"] == "pointnet":
+            self.model = PointNet(**self.config["model"])
+        elif config["train"]["model"] == "dgcnn":
+            self.model = DGCNN(**self.config["model"])
+
 
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -66,11 +78,10 @@ class Set2TreeLightning(LightningModule):
             self.loss_fn = FocalLoss(
                 gamma=2.5, ignore_index=-1, weight=class_weights, reduction="mean"
             )
-        self.supervised_graph_contastive_loss = SupGraphConLoss(
+        self.adv_sup_con_loss = SupGraphConLoss(
             temperature=0.07, contrast_mode='all',base_temperature=0.07)
         self.gca_loss = GCALoss(
             temperature=0.07)
-        print("temperature:",self.gca_loss.temperature)
         self.train_accuracy = PerfectLCAG(
             batch_size=config["train"]["batch_size"], ignore_index=-1, ).to(device)
         self.val_accuracy = PerfectLCAG(
@@ -96,7 +107,7 @@ class Set2TreeLightning(LightningModule):
         # compute total loss
         # loss["loss"] = sum(subloss for subloss in loss.values())
         # factorised model
-        if self.config["train"]["model"] == "fnri_model" or self.config["train"]["model"] == "edge_model" or self.config["train"]["model"] == "afnri_model":
+        if self.config["train"]["model"] in ["fnri_model","afnri_model"]:
             loss = {}
             lca_split = torch.LongTensor(self.config["model"]["num_classes"],len(out.edata["lca"])).to(device)
             pred_split = torch.split(out.edata["pred"], self.config["model"]["num_classes"], dim=-1)
@@ -179,7 +190,7 @@ class Set2TreeLightning(LightningModule):
                 loss["loss"] = self.loss_fn(out.edata["pred"], out.edata["lca"])
 
         # NRI and others
-        elif self.config["train"]["model"] == "nri_model":
+        elif self.config["train"]["model"] in ["nri_model", "gcn_model", "edge_model", "gat_model", "edge_conv", "pointnet", "dgcnn"]:
             loss = {}
             ### Adding perturbations to nodes as data augmentation on NRI model
              # if self.training:
@@ -201,6 +212,7 @@ class Set2TreeLightning(LightningModule):
             #     loss["loss"] = self.loss_fn(out.edata["pred"], out.edata["lca"])
             # print('nri_model')
             loss["loss"] = self.loss_fn(out.edata["pred"], out.edata["lca"])
+
         else:
             raise ValueError(f"no such model")
         return out.edata["pred"], out.edata["lca"], out.batch_num_edges(), out.batch_num_nodes(), loss
@@ -245,9 +257,9 @@ class Set2TreeLightning(LightningModule):
         self.log_losses(loss, batch_size=self.config["train"]["batch_size"], stage="train")
 
         # wandb log
-        if batch_idx % 20 == 0:
-            acc=self.train_accuracy((preds, labels, edge_batch, node_batch))
-            wandb.log({"train_acc": acc, "loss": loss})
+        # if batch_idx % 20 == 0:
+        #     acc=self.train_accuracy((preds, labels, edge_batch, node_batch))
+        #     wandb.log({"train_acc": acc, "loss": loss})
         # print("training_step:",loss,loss["loss"])
         return loss["loss"]
 
@@ -264,10 +276,10 @@ class Set2TreeLightning(LightningModule):
         # wandb.log({"val_acc": acc, "loss": loss})
 
         # return loss (and maybe more stuff)
-        return_dict = loss
-
-        return return_dict
-
+        # return_dict = loss
+        #
+        # return return_dict
+        return loss["loss"]
 
 
     def configure_optimizers(self):

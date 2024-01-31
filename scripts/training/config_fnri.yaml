@@ -2,12 +2,12 @@ dataset:
   # Select the data type, this decides which Dataset class to use
   source: phasespace
   phasespace:
-    known_path: /home/lujj/projects/code/set2tree/scripts/training/phasespace_dataset/
-    unknown_path: /home/lujj/projects/code/set2tree/scripts/training/phasespace_dataset/
+    known_path: /home/lujj/project/set2tree/scripts/training/phasespace_dataset
+    unknown_path: /home/lujj/project/set2tree/scripts/training/phasespace_dataset
     config:
       #seed: 42  # numpy random seed
       #samples: 42  # Number of total samples to load in dataset
-      #samples_per_topology: 42  # Number of samples per topology to load
+      samples_per_topology: 2000  # Number of samples per topology to load
       monitor_tag: "Validation Known" # Which dataset tag to monitor for e.g. checkpointing
       apply_scaling: True # Whether to apply preprocessing scaling to input features
       # scaling_dict: null
@@ -20,8 +20,8 @@ dataset:
   # files
   #datasets:
   num_classes: 8
-train_path: /home/lujj/projects/code/set2tree/scripts/training/phasespace_dataset/
-val_path: /home/lujj/projects/code/set2tree/scripts/training/phasespace_dataset/
+train_path: /home/lujj/project/set2tree/scripts/training/phasespace_dataset
+val_path: /home/lujj/project/set2tree/scripts/training/phasespace_dataset
 loss: focal
 num_workers: 16
 num_gpus: 1

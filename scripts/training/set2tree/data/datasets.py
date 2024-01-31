@@ -70,6 +70,7 @@ class PhasespaceSet(torch.utils.data.Dataset):
             scaling_dict(dict): Scaling factors contained as {mean: float, std: float}
         """
         super().__init__()
+        print("Path(root):",Path(root))
         self.root = Path(root)
 
         self.modes = ["train", "val", "test"]
@@ -86,11 +87,11 @@ class PhasespaceSet(torch.utils.data.Dataset):
         }
         if seed is not None:
             np.random.seed(seed)
-            torch.manual_seed(seed)
 
         x_files = sorted(self.root.glob(f"leaves_{mode}.*"))
         y_files = sorted(self.root.glob(f"lcas_{mode}.*"))
-
+        print("x_files:",len(x_files))
+        print("y_files:",y_files)
         assert len(x_files) > 0, f"No files to load found in {self.root}"
 
         # This deals with 0 padding dataset IDs since python will convert the input numbers to ints
@@ -231,39 +232,6 @@ class PhasespaceSet(torch.utils.data.Dataset):
             ),
             num_nodes=num_nodes,
         )
-
-        # adding noise
-        # if self.config["adding_noise"] == True :
-        #     # print("adding_noise,std:",self.config["std"],"mean:",self.config["mean"],self.config["normalize_features"],torch.FloatTensor(item[0]).shape[0])
-        #     leaf_feats_tensor = torch.FloatTensor(item[0])
-        #     # print("item[0]:",item[0])
-        #     # print(1)
-        #     # print("noise_ratio:",self.config["noise_ratio"])
-        #     num_nodes_to_select = int(self.config["noise_ratio"] * leaf_feats_tensor.shape[0])
-        #     # print("num_nodes_to_select:",num_nodes_to_select)
-        #
-        #     mean = leaf_feats_tensor.mean() + self.config["mean"]
-        #     std = leaf_feats_tensor.std() * self.config["std"]
-        #
-        #     indices = torch.randperm(leaf_feats_tensor.shape[0])[:num_nodes_to_select]
-        #
-        #     # print("add noise")
-        #     for node in indices:
-        #         noise = torch.normal(mean = mean, std = std, size = leaf_feats_tensor[node].shape)
-        #         noise[3] = 0.0
-        #         leaf_feats_tensor[node] += noise
-        #         # print("noise:",noise)
-        #
-        #     if self.config["normalize_features"] == True:
-        #         g.ndata["leaf features"] = leaf_feats_tensor/leaf_feats_tensor.norm(p=2,dim=0,keepdim=True)
-        #     else:
-        #         g.ndata["leaf features"] = leaf_feats_tensor
-        #     # g.ndata["leaf features"] = leaf_feats_tensor / leaf_feats_tensor.norm(p=2, dim=0, keepdim=True)
-        # else:
-        #     # print("data has no noise")
-        #     if self.config["normalize_features"] == True:
-        #         g.ndata["leaf features"] = torch.FloatTensor(item[0])/torch.FloatTensor(item[0]).norm(p=2,dim=0,keepdim=True)
-        #     else:
         g.ndata["leaf features"] = torch.FloatTensor(item[0])
         # g = dgl.add_self_loop(g)
         # print(g.edges())
@@ -327,7 +295,6 @@ def generate_phasespace(
 
     if seed is not None:
         np.random.seed(seed)
-        torch.manual_seed(seed)
         # This is supposed to be supported as a global seed for Phasespace but doesn't work
         # Instead we set the seed below in the calls to generate()
         # tf.random.set_seed(np.random.randint(np.iinfo(np.int32).max))
