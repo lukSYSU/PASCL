@@ -2,8 +2,8 @@ dataset:
   # Select the data type, this decides which Dataset class to use
   source: phasespace
   phasespace:
-    known_path: "/storage/agrp/dmitrykl/Set2Tree/Set2Tree_GNN/data/phasespace_dataset/"
-    unknown_path: "/storage/agrp/dmitrykl/Set2Tree/Set2Tree_GNN/data/phasespace_dataset/"
+    known_path: null
+    unknown_path: null
     config:
       #seed: 42  # numpy random seed
       #samples: 42  # Number of total samples to load in dataset
@@ -20,8 +20,8 @@ dataset:
   # files
   #datasets:
   num_classes: 8
-train_path: "/storage/agrp/dmitrykl/Set2Tree/Set2Tree_GNN/data/phasespace_dataset/"
-val_path: "/storage/agrp/dmitrykl/Set2Tree/Set2Tree_GNN/data/phasespace_dataset/"
+train_path: null
+val_path: null
 loss: focal
 num_workers: 15
 num_gpus: 1

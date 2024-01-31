@@ -13,21 +13,13 @@ from torch.utils.data import DataLoader
 
 from set2tree.config import load_config
 from set2tree.data import PhasespaceSet, create_dataloader_mode_tags
-from set2tree.losses import EMDLoss, FocalLoss, SupGraphConLoss, GCALoss
+from set2tree.losses import EMDLoss, FocalLoss, SupGraphConLoss
 from set2tree.models.NRI import NRIModel
-from set2tree.models.Set2TreeGAT import Set2TreeGAT
-from set2tree.models.Set2TreeEdge import Set2TreeEdge
-from set2tree.models.fNRI import fNRIModel
-from set2tree.models.afNRI import afNRIModel
 from set2tree.models.SGCL import SGCL
-# from set2tree.models.GCN import GCN
-# from set2tree.models.GAT import GAT
-# from set2tree.models.EdgeConvModel import EdgeConvModel
-# from set2tree.models.DGCNN import PointNet, DGCNN
 
 from set2tree.utils import calculate_class_weights
 from pl_metrics import *
-# from attack import *
+
 
 class Set2TreeLightning(LightningModule):
     def __init__(self, cfg_path):
@@ -37,24 +29,8 @@ class Set2TreeLightning(LightningModule):
         self.config = config
         if config["train"]["model"] == "nri_model":
             self.model = NRIModel(**self.config["model"])
-        elif config["train"]["model"] == "edge_model":
-            self.model = Set2TreeEdge(**self.config["model"])
-        elif config["train"]["model"] == "fnri_model":
-            self.model = fNRIModel(**self.config["model"])
-        elif config["train"]["model"] == "afnri_model":
-            self.model = afNRIModel(**self.config["model"])
-        elif config["train"]["model"] == "pascl" or config["train"]["model"] == "gca":
+        elif config["train"]["model"] == "pascl":
             self.model = SGCL(**self.config["model"])
-        elif config["train"]["model"] == "gcn_model":
-            self.model = GCN(**self.config["model"])
-        elif config["train"]["model"] == "gat_model":
-            self.model = GAT(**self.config["model"])
-        elif config["train"]["model"] == "edge_conv":
-            self.model = EdgeConvModel(**self.config["model"])
-        elif config["train"]["model"] == "pointnet":
-            self.model = PointNet(**self.config["model"])
-        elif config["train"]["model"] == "dgcnn":
-            self.model = DGCNN(**self.config["model"])
 
 
 
@@ -80,8 +56,6 @@ class Set2TreeLightning(LightningModule):
             )
         self.adv_sup_con_loss = SupGraphConLoss(
             temperature=0.07, contrast_mode='all',base_temperature=0.07)
-        self.gca_loss = GCALoss(
-            temperature=0.07)
         self.train_accuracy = PerfectLCAG(
             batch_size=config["train"]["batch_size"], ignore_index=-1, ).to(device)
         self.val_accuracy = PerfectLCAG(
@@ -106,18 +80,9 @@ class Set2TreeLightning(LightningModule):
 
         # compute total loss
         # loss["loss"] = sum(subloss for subloss in loss.values())
-        # factorised model
-        if self.config["train"]["model"] in ["fnri_model","afnri_model"]:
-            loss = {}
-            lca_split = torch.LongTensor(self.config["model"]["num_classes"],len(out.edata["lca"])).to(device)
-            pred_split = torch.split(out.edata["pred"], self.config["model"]["num_classes"], dim=-1)
-            for i in range(self.config["model"]["num_classes"]):
-                lca_split[i] = torch.where((out.edata["lca"]==i+1)+(out.edata["lca"]==-1), out.edata["lca"], 0)
-            split_loss = [self.loss_fn(pred_split[i], lca_split[i]) for i in range(self.config["model"]["num_classes"])]
-            loss["loss"] = sum(split_loss)
 
         # Supervised Contrastive Learning with Perturbative Augmentation(PASCL)
-        elif self.config["train"]["model"] == "pascl":
+        if self.config["train"]["model"] == "pascl":
             loss = {}
             if self.training:
                 ### feature adversarial perturbation
@@ -154,43 +119,9 @@ class Set2TreeLightning(LightningModule):
                 out = self.model(batch.to(device))
                 loss["loss"] = self.loss_fn(out.edata["pred"], out.edata["lca"])
 
-        # GCA model, contrastive learning baseline
-        elif self.config["train"]["model"] == "gca":
-            loss = {}
-            if self.training:
-                if self.config["perturb_method"] == "adversarial":
-                    forward = lambda perturb: self.model(batch, perturb).to(device)
-                    model_forward = (self.model, forward)
-                    y = batch.edata["lca"]
-                    perturb_shape = (batch.num_nodes(), 4)
-                    aug_out = self.flag(model_forward, perturb_shape, y, self.config, self.configure_optimizers(), self.loss_fn)
-
-                if self.config["perturb_method"] == "gaussian":
-                    std = torch.std(batch.ndata["leaf features"], dim=1) * self.config["std"]
-                    num_nodes = batch.num_nodes()
-                    num_perturb = int(num_nodes * self.config["perturb_ratio"])
-                    perturb_idx = torch.randperm(num_nodes)[:num_perturb]
-                    for idx in perturb_idx:
-                        noise = torch.normal(mean = 0.0, std = std[idx], size = batch.ndata["leaf features"][idx].shape).to(device)
-                        batch.ndata["leaf features"][idx] += noise
-                    aug_out = self.model(batch.to(device))
-
-                if self.config["perturb_method"] == "mask":
-                    num_nodes = batch.num_nodes()
-                    num_perturb = int(num_nodes * self.config["perturb_ratio"])
-                    perturb_idx = torch.randperm(num_nodes)[:num_perturb]
-                    for idx in perturb_idx:
-                        batch.ndata["leaf features"][idx].zero_()
-                    aug_out = self.model(batch.to(device))
-
-                loss["loss"] = self.config["lambda"] * self.gca_loss(out.edata['hidden rep'], aug_out.edata['hidden rep']) + \
-                               (1 - self.config["lambda"]) * (self.loss_fn(out.edata["pred"], out.edata["lca"]) + self.loss_fn(aug_out.edata["pred"], aug_out.edata["lca"]))
-            else:
-                out = self.model(batch.to(device))
-                loss["loss"] = self.loss_fn(out.edata["pred"], out.edata["lca"])
 
         # NRI and others
-        elif self.config["train"]["model"] in ["nri_model", "gcn_model", "edge_model", "gat_model", "edge_conv", "pointnet", "dgcnn"]:
+        elif self.config["train"]["model"] in ["nri_model"]:
             loss = {}
             ### Adding perturbations to nodes as data augmentation on NRI model
              # if self.training:

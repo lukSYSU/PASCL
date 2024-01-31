@@ -46,16 +46,6 @@ def parse_args():
     parser.add_argument("--num_workers", type=int, help="Overwrite config num workers.")
     parser.add_argument("--num_epochs", type=int, help="Overwrite config num epochs.")
     parser.add_argument("--no_logging", action="store_true", help="Disable the logging framework.")
-    # parser.add_argument("--adding_noise", action="store_true", default=False, help="Adding noise to features.")
-    # parser.add_argument("--mean", default=0.0, type=float, help="Mean value of noise")
-    # parser.add_argument("--std", default=1.0, type=float, help="Amplification factor of noise standard deviation")
-    # parser.add_argument('--lambda_amp', type=float, default=0.1, help="amp parameter")
-    # parser.add_argument('--normalize_features', action="store_true", default=False)
-    # parser.add_argument('--step_size', type=float, default=0.001, help="Degree of perturbation at each step")
-    # parser.add_argument('--m', type=int, default=3, help="Number of rounds of training perturbations per batch")
-    # parser.add_argument('--lambda', type=float, default=0.1, help="Hyperparameters weighted to loss")
-    parser.add_argument("--perturb_ratio", default=0.5, type=float, help="Percentage of leaf nodes with perturb")
-    parser.add_argument("--perturb_method", default='gaussian', type=str, help="method of perturb")
 
 
     args = parser.parse_args()
@@ -334,7 +324,7 @@ def main():
     wandb.login()
     run = wandb.init(
         # Set the project where this run will be logged
-        project="training NRI with noise(10 percent,0.1 std)",
+        project="project_name",
         # Track hyperparameters and run metadata
         config={
             "run_name": config["run_name"],

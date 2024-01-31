@@ -3,7 +3,6 @@ import torch
 import torch.nn as nn
 
 from .mlp import MLP
-from .gatv3conv import GATv3Conv
 
 #set2tree NRI block
 class NRI_block(nn.Module):
