@@ -1,9 +1,6 @@
 # PASCL
 Source code for "PASCL: Supervised Contrastive Learning with Perturbative Augmentation for Particle Decay Reconstruction"
 
-## File structure
-
-* TODO
 
 ## Data
 
